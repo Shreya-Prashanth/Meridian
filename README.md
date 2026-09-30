@@ -1,5 +1,8 @@
 # Samsung PRISM GenAI Hackathon 3.0 — Theme 5
 ## Interruptible Real-Time Agent
+# Project Name
+
+> **Demo Video:**[Google Drive Video Link](https://drive.google.com/file/d/1UATw2upfRKB5quo93cKb4xXmgzx5PkfH/view?usp=drivesdk)> **Presentation Slides:** [View PowerPoint Slides](
 
 Submission-ready Python implementation for **Theme 05: Interruptible Real-Time Agents**.
 

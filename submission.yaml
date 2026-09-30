@@ -1,0 +1,13 @@
+team: "interruptible-realtime-agents"
+entry_point: "agent.agent:ParticipantAgent"
+python: "3.12"
+requirements:
+  - "google-genai>=1.0.0"
+  - "Pillow>=10.0.0"
+  - "faster-whisper>=1.1.0"
+env:
+  - "GEMINI_API_KEY"
+  - "GEMINI_MODEL"
+  - "WHISPER_MODEL"
+  - "WHISPER_DEVICE"
+  - "WHISPER_COMPUTE_TYPE"

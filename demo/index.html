@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interruptible Real-Time Agent</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">SAMSUNG PRISM · THEME 05</div>
+        <h1>Interruptible Real-Time Agent</h1>
+        <p class="subtitle">Fast response · asynchronous tools · state rollback · stale-result protection</p>
+      </div>
+      <div id="status" class="status idle"><span></span> IDLE</div>
+    </header>
+
+    <section class="grid">
+      <div class="main-column">
+        <section class="card conversation-card">
+          <div class="card-title">Live interaction</div>
+          <div id="conversation" class="conversation"></div>
+
+          <form id="messageForm" class="composer">
+            <input id="messageInput" autocomplete="off" placeholder="Try: Book a flight to Delhi tomorrow" />
+            <button type="submit">SEND</button>
+          </form>
+
+          <div class="interrupt-row">
+            <input id="interruptInput" autocomplete="off" placeholder="Interrupt: Actually, make that Mumbai" />
+            <button id="interruptButton" class="danger" type="button">INTERRUPT</button>
+            <button id="resetButton" class="ghost" type="button">RESET</button>
+          </div>
+        </section>
+
+        <section class="card activity-card">
+          <div class="card-heading-row">
+            <div class="card-title">Agent activity</div>
+            <div class="live-dot"><span></span> LIVE</div>
+          </div>
+          <div id="activity" class="activity"></div>
+        </section>
+      </div>
+
+      <aside class="side-column">
+        <section class="card state-card">
+          <div class="card-title">Current state</div>
+          <div class="metric"><span>Intent</span><strong id="intent">—</strong></div>
+          <div class="metric"><span>State version</span><strong id="version">0</strong></div>
+          <div class="metric epoch"><span>Epoch</span><strong id="epoch">0</strong></div>
+          <div class="slots-title">Slots</div>
+          <div id="slots" class="slots empty">No slots yet</div>
+        </section>
+
+        <section class="card tools-card">
+          <div class="card-title">Tool operations</div>
+          <div id="tools" class="tools empty">No active operations</div>
+        </section>
+
+        <section class="card architecture-card">
+          <div class="card-title">Execution model</div>
+          <div class="architecture">
+            <div class="arch fast">FAST PATH<small>acknowledge / interrupt</small></div>
+            <div class="arrow">↓</div>
+            <div class="arch slow">SLOW PATH<small>LLM → state → tools</small></div>
+            <div class="arrow">↓</div>
+            <div class="arch guard">CANCELLATION + EPOCH<small>reject stale results</small></div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

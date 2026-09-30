@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meridian — voice flight booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F1E8; --surface:#FBF9F4; --orb:#ECE5D6; --line:#DFD6C4; --ink:#26221D; --muted:#7A7264;
+  --accent:#34574D; --accent-ink:#F5F1E8; --pause:#A3721B; --err:#9B3B2E;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1D1A16; --surface:#25211C; --orb:#2E2921; --line:#3B352B; --ink:#EDE6D8; --muted:#A0978A;
+  --accent:#8DB5A6; --accent-ink:#17211D; --pause:#D3A24E; --err:#D9826F;}}
+:root[data-theme="dark"]{
+  --bg:#1D1A16; --surface:#25211C; --orb:#2E2921; --line:#3B352B; --ink:#EDE6D8; --muted:#A0978A;
+  --accent:#8DB5A6; --accent-ink:#17211D; --pause:#D3A24E; --err:#D9826F;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 "Instrument Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.app{min-height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto;padding:0 24px}
+header{display:flex;justify-content:space-between;align-items:center;padding:24px 0}
+.brand{font:400 24px "Instrument Serif",Georgia,serif;letter-spacing:.01em}
+.conn{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.conn[data-c="on"] .dot{background:var(--accent)} .conn[data-c="busy"] .dot{background:var(--pause)} .conn[data-c="err"] .dot{background:var(--err)}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 0 56px;gap:8px}
+h1{font:400 clamp(36px,7vw,56px)/1.08 "Instrument Serif",Georgia,serif;margin:0;letter-spacing:-.01em;max-width:14em;text-wrap:balance}
+.sub{color:var(--muted);margin:0;min-height:1.5em;max-width:30em}
+.stage{margin:40px 0 32px}
+/* orb */
+.orb{position:relative;width:184px;height:184px;border:0;padding:0;border-radius:50%;background:transparent;cursor:pointer;color:var(--ink);display:grid;place-items:center}
+.orb:focus-visible{outline:2px solid var(--accent);outline-offset:8px}
+.orb:disabled{cursor:default}
+.core{position:absolute;inset:14px;border-radius:50%;background:var(--orb);border:1px solid var(--line);transition:background .3s,border-color .3s,transform .2s}
+.orb:not(:disabled):hover .core{transform:scale(1.02);border-color:var(--muted)}
+.orb:not(:disabled):active .core{transform:scale(.98)}
+.rings{position:absolute;inset:0;pointer-events:none}
+.rings i{position:absolute;inset:14px;border-radius:50%;border:1.5px solid var(--accent);opacity:0}
+.glyph{position:relative;display:grid;place-items:center;height:64px}
+.glyph svg{display:block}
+.num{font:400 72px/1 "Instrument Serif",serif;font-variant-numeric:tabular-nums}
+.bars{display:flex;gap:5px;align-items:center;height:48px}
+.bars b{width:5px;height:12px;border-radius:3px;background:var(--accent);animation:bar 1s ease-in-out infinite}
+.bars b:nth-child(2){animation-delay:-.2s}.bars b:nth-child(3){animation-delay:-.4s}.bars b:nth-child(4){animation-delay:-.6s}.bars b:nth-child(5){animation-delay:-.8s}
+@keyframes bar{0%,100%{height:10px}50%{height:44px}}
+svg.prog{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);pointer-events:none}
+.prog circle{fill:none;stroke-width:3}
+.prog .tr{stroke:var(--line)} .prog .fg{stroke:var(--ink);stroke-linecap:round}
+.spin{animation:rot 1.1s linear infinite;transform-origin:center}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes ring{0%{transform:scale(.92);opacity:.5}100%{transform:scale(1.2);opacity:0}}
+@keyframes breathe{0%,100%{transform:scale(.96);opacity:.25}50%{transform:scale(1.04);opacity:.5}}
+[data-s="IDLE"] .rings i:first-child{animation:breathe 4s ease-in-out infinite}
+[data-s="LISTENING"] .core{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+[data-s="LISTENING"] .orb{color:var(--accent-ink)}
+[data-s="LISTENING"] .rings i{animation:ring 2.2s ease-out infinite}
+[data-s="LISTENING"] .rings i:nth-child(2){animation-delay:.7s}[data-s="LISTENING"] .rings i:nth-child(3){animation-delay:1.4s}
+[data-s="INTERRUPTED"] .core{border-color:var(--pause)} [data-s="INTERRUPTED"] .orb{color:var(--pause)}
+[data-s="CONFIRMED"] .core{background:var(--accent);border-color:var(--accent)} [data-s="CONFIRMED"] .orb{color:var(--accent-ink)}
+[data-s="ERROR"] .orb{color:var(--err)} [data-s="ERROR"] .core{border-color:var(--err)}
+/* controls */
+.controls{min-height:112px;display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.btn{font:500 16px "Instrument Sans",sans-serif;border-radius:10px;padding:13px 22px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--bg);transition:transform .15s,opacity .15s}
+.btn:hover{opacity:.9}.btn:active{transform:scale(.98)}
+.btn:focus-visible,input:focus-visible,.link:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.link{background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:4px}
+.hint{color:var(--muted);font-size:14px;margin:0}
+.form{display:flex;gap:8px;width:100%;max-width:440px}
+input[type=text]{flex:1;min-width:0;font:inherit;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+input[type=text]::placeholder{color:var(--muted)}
+.heard{min-height:1.5em;color:var(--muted);font-style:italic;margin:0}
+.dest{font:400 28px "Instrument Serif",serif;margin:0}
+footer{padding:16px 0 24px;font-size:13px;color:var(--muted);text-align:center;border-top:1px solid var(--line)}
+kbd{font:inherit;border:1px solid var(--line);border-radius:5px;padding:0 6px;background:var(--surface)}
+.swap{animation:swap .3s ease-out}
+@keyframes swap{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition:none!important}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+a.brand{color:inherit;text-decoration:none}
+.nav{display:flex;gap:4px}.nav a{color:var(--muted);text-decoration:none;font-size:15px;padding:6px 12px;border-radius:8px}
+.nav a:hover,.nav a[aria-current]{color:var(--ink)}.nav a[aria-current]{background:var(--orb)}
+.nav a:focus-visible,a.brand:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+body:not([data-v="agent"]) #agent,body:not([data-v="agent"]) footer{display:none}
+body:not([data-v="home"]) #home,body:not([data-v="history"]) #hist{display:none}
+#home,#hist{flex:1;padding:40px 0 72px}
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;padding:24px 0 8px}
+.hero .btn{text-decoration:none;display:inline-block;margin-top:8px}
+.steps{list-style:none;margin:64px 0 48px;padding:32px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+.steps .n{font:400 32px "Instrument Serif",serif;color:var(--muted)}
+.steps h3{font-size:17px;font-weight:500;margin:6px 0}.steps p{margin:0;color:var(--muted);font-size:15px}
+.tryhd{text-align:center;margin-bottom:14px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.chip{font:inherit;font-size:15px;padding:9px 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer;transition:border-color .15s}
+.chip:hover{border-color:var(--muted)}.chip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.receipt{width:100%;max-width:420px;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-align:left;overflow:hidden}
+.receipt>div{display:flex;justify-content:space-between;gap:16px;padding:12px 16px;border-top:1px solid var(--line)}.receipt>div:first-child{border-top:0}
+.receipt dt{color:var(--muted)}.receipt dd{margin:0;text-align:right}
+.chg{color:var(--pause);font-size:13px}
+#hist h1{font-size:44px;text-align:left}#hist .sub{margin-bottom:24px}
+#histList{list-style:none;margin:0 0 16px;padding:0}
+#histList li{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+#histList span{display:block;color:var(--muted);font-size:14px}#histList small{color:var(--muted);font-variant-numeric:tabular-nums}
+#histList .empty{color:var(--muted)}
+@media (max-width:640px){.steps{grid-template-columns:1fr;gap:24px}.conn span:last-child{display:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-s="OFFLINE">
+  <header>
+    <a class="brand" href="#/">Meridian</a><nav class="nav"><a href="#/agent">Agent</a><a href="#/history">History</a></nav>
+    <span class="conn" id="conn" data-c="off"><span class="dot"></span><span id="connText">Not connected</span></span>
+  </header>
+  <section id="home">
+  <div class="hero">
+    <svg class="mark" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="44" fill="none" stroke="var(--line)" stroke-width="3"/><circle cx="48" cy="48" r="44" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-dasharray="207 277" transform="rotate(-90 48 48)"/><text x="48" y="62" text-anchor="middle" font-family="Instrument Serif,serif" font-size="42" fill="currentColor">5</text></svg>
+    <h1>Tell it what to do. Change your mind before it’s done.</h1>
+    <p class="sub">Meridian is a voice assistant that waits five seconds before it acts. Interrupt, correct it, and it carries on with your change.</p>
+    <a class="btn accent" href="#/agent">Try the demo</a>
+  </div>
+  <ol class="steps">
+    <li><span class="n">1</span><h3>Ask out loud</h3><p>Flights, food, meetings, messages, rides, reminders. Anything you can put in a sentence.</p></li>
+    <li><span class="n">2</span><h3>Watch the window</h3><p>A five-second countdown runs before anything is confirmed, with a clear Interrupt control.</p></li>
+    <li><span class="n">3</span><h3>Step in</h3><p>Interrupt, say or type the change, and the agent confirms it by voice and finishes the job.</p></li>
+  </ol>
+  <p class="hint tryhd">Try asking</p>
+  <div class="chips">
+    <button class="chip" data-p="Book a flight to Dubai">Book a flight to Dubai</button>
+    <button class="chip" data-p="Order a margherita pizza">Order a margherita pizza</button>
+    <button class="chip" data-p="Schedule a meeting with Priya at 4 pm">Schedule a meeting with Priya at 4 pm</button>
+    <button class="chip" data-p="Send an email to Arjun about the invoice">Send an email to Arjun about the invoice</button>
+    <button class="chip" data-p="Book a cab to the airport">Book a cab to the airport</button>
+    <button class="chip" data-p="Remind me to call mom at 8 pm">Remind me to call mom at 8 pm</button>
+  </div>
+</section>
+  <main id="agent">
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+    <div class="stage"><button class="orb" id="orb" type="button"></button></div>
+    <div class="controls" id="controls"></div>
+    <div class="sr" role="status" aria-live="polite" id="live"></div>
+  </main>
+  <section id="hist"><h1>History</h1><p class="sub">Everything the agent has completed, including changes you made during the window.</p><ul id="histList"></ul><button class="link" data-clear>Clear history</button></section>
+  <footer>You have five seconds to step in before anything is confirmed. Press <kbd>Space</kbd> or <kbd>Esc</kbd> to interrupt.</footer>
+</div>
+
+<script>
+/* ---------- Config ----------
+   Set WS_URL to your backend (e.g. "ws://localhost:8000/ws") to use a real server.
+   Left empty, a local mock server speaks the same protocol so the full flow can be demoed.
+   Client -> server: {type:"utterance",text} {type:"commit"} {type:"interrupt"} {type:"update",text}
+   Server -> client: {type:"action_started",kind,title,slot,subject,window_ms} {type:"agent_say",text,subject?}
+                     {type:"confirmed",subject,done} {type:"clarify",text} {type:"error",message}
+   Any task works: the server decides what the action is; the client only shows title, slot and subject. */
+const WS_URL = "";
+const WINDOW_MS = 5000;
+
+/* ---------- State machine ---------- */
+const NEXT = {
+  OFFLINE:["CONNECTING"], CONNECTING:["IDLE","ERROR"],
+  IDLE:["LISTENING","PROCESSING","ERROR"], LISTENING:["PROCESSING","IDLE","ERROR"],
+  PROCESSING:["BOOKING","IDLE","ERROR"], BOOKING:["SPEAKING","INTERRUPTED","ERROR"],
+  SPEAKING:["CONFIRMED","IDLE","ERROR"], INTERRUPTED:["UPDATING","ERROR"],
+  UPDATING:["SPEAKING","ERROR"], CONFIRMED:["IDLE","LISTENING"], ERROR:["CONNECTING","OFFLINE"]
+};
+let S = "OFFLINE";
+const ctx = { destination:"", heard:"", error:"", orig:"", done:"", ref:"", a:{title:"Working on it",slot:"Request"} };
+let pending = null;
+
+const $ = id => document.getElementById(id);
+const app = $("app"), orb = $("orb");
+let ws = null, recog = null, raf = 0, timers = [];
+
+function go(next, patch){
+  if(next !== S && !NEXT[S].includes(next)){ console.warn("blocked", S, "->", next); return; }
+  exit(S); Object.assign(ctx, patch||{}); S = next; app.dataset.s = S; render(); enter(S);
+}
+function exit(s){
+  if(s==="BOOKING") { cancelAnimationFrame(raf); raf = 0; }
+  if(s==="LISTENING" && recog){ try{recog.abort()}catch(e){} }
+}
+function enter(s){
+  if(s==="BOOKING") startCountdown(ctx.windowMs||WINDOW_MS);
+  if(s==="LISTENING") listen();
+  if(s==="IDLE") runPending();
+  if(s==="CONFIRMED"){ speak(ctx.done+"."); saveHistory(); }
+}
+
+/* ---------- Copy + controls per state ---------- */
+const V = {
+  OFFLINE:   {t:()=>"Do things by talking.", s:()=>"Start the agent to allow microphone access and hear replies."},
+  CONNECTING:{t:()=>"Connecting…", s:()=>"Allow the microphone if your browser asks."},
+  IDLE:      {t:()=>"Ready when you are.", s:()=>"Tap the microphone and say what you need."},
+  LISTENING: {t:()=>"Listening…", s:()=>"Try “Order a margherita pizza.”"},
+  PROCESSING:{t:()=>"Understanding your request…", s:()=>""},
+  BOOKING:   {t:()=>ctx.a.title, s:()=>"It goes through in five seconds unless you interrupt."},
+  SPEAKING:  {t:()=>"Finishing up…", s:()=>""},
+  INTERRUPTED:{t:()=>"Paused", s:()=>"Nothing is confirmed yet. Tell me what to change."},
+  UPDATING:  {t:()=>"Updating "+String(ctx.a.slot||"request").toLowerCase()+"…", s:()=>""},
+  CONFIRMED: {t:()=>ctx.done, s:()=>""},
+  ERROR:     {t:()=>"Something went wrong", s:()=>ctx.error||"The connection dropped."}
+};
+
+const mic = '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const icons = {
+  pause:'<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
+  check:'<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  alert:'<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 6v7M12 17.5v.5"/></svg>'
+};
+const R = 85, C = 2*Math.PI*R;
+const ringSvg = (cls, arc) => `<svg class="prog" viewBox="0 0 184 184"><circle class="tr" cx="92" cy="92" r="${R}"/><circle class="fg ${cls||""}" id="fg" cx="92" cy="92" r="${R}" stroke-dasharray="${arc?C*.25+" "+C:C}" stroke-dashoffset="0"/></svg>`;
+
+function orbHTML(){
+  const rings = '<span class="rings"><i></i><i></i><i></i></span><span class="core"></span>';
+  const g = h => `<span class="glyph">${h}</span>`;
+  switch(S){
+    case "PROCESSING": case "UPDATING": return rings+ringSvg("spin",true)+g(mic);
+    case "BOOKING":    return rings+ringSvg()+g('<span class="num" id="num">5</span>');
+    case "SPEAKING":   return rings+g('<span class="bars"><b></b><b></b><b></b><b></b><b></b></span>');
+    case "INTERRUPTED":return rings+ringSvg()+g(icons.pause);
+    case "CONFIRMED":  return rings+g(icons.check);
+    case "ERROR":      return rings+g(icons.alert);
+    default:           return rings+g(mic);
+  }
+}
+const orbLabel = {OFFLINE:"Agent not started",CONNECTING:"Connecting",IDLE:"Start listening",LISTENING:"Stop listening",BOOKING:"Interrupt",CONFIRMED:"Start another request",ERROR:"Reconnect",SPEAKING:"Stop the agent's voice",INTERRUPTED:"Booking paused",PROCESSING:"Working",UPDATING:"Working"};
+
+function controlsHTML(){
+  switch(S){
+    case "OFFLINE":   return '<button class="btn accent" data-a="start">Start agent</button>';
+    case "CONNECTING":return '<button class="btn" disabled>Connecting…</button>';
+    case "IDLE": return `<form class="form" data-f="utter"><input type="text" name="t" autocomplete="off" aria-label="Type a request" placeholder="or type a request"><button class="btn ghost">Send</button></form>`;
+    case "LISTENING": return `<p class="heard" id="heard">${esc(ctx.heard)}</p><button class="link" data-a="stop">Stop listening</button>`;
+    case "PROCESSING":return `<p class="heard">“${esc(ctx.heard)}”</p>`;
+    case "BOOKING":   return `<p class="dest">${esc(ctx.destination)}</p><button class="btn" data-a="interrupt">Interrupt</button>`;
+    case "SPEAKING":  return `<p class="dest">${esc(ctx.destination)}</p><button class="link" data-a="mute">Stop voice</button>`;
+    case "INTERRUPTED":return `<form class="form" data-f="update"><input type="text" name="t" autocomplete="off" aria-label="What would you like to change?" placeholder="No, change it to…"><button class="btn">Send</button></form><p class="hint">Nothing is done while paused.</p>`;
+    case "UPDATING":  return `<p class="heard">“${esc(ctx.heard)}”</p>`;
+    case "CONFIRMED": { const chg = ctx.orig && ctx.orig!==ctx.destination;
+      return `<div class="receipt"><div><dt>Request</dt><dd>${esc(ctx.a.title)}</dd></div><div><dt>${esc(ctx.a.slot)}</dt><dd>${esc(ctx.destination)}${chg?`<br><span class="chg">Changed from ${esc(ctx.orig)}</span>`:""}</dd></div><div><dt>Reference</dt><dd>${ctx.ref}</dd></div></div><button class="btn ghost" data-a="again">Start another request</button>`; }
+    case "ERROR":     return '<button class="btn" data-a="retry">Reconnect</button>';
+  }
+}
+const esc = s => String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function render(){
+  const v = V[S];
+  $("title").textContent = v.t(); $("title").classList.remove("swap"); void $("title").offsetWidth; $("title").classList.add("swap");
+  $("sub").textContent = v.s();
+  orb.innerHTML = orbHTML(); orb.setAttribute("aria-label", orbLabel[S]);
+  orb.disabled = ["CONNECTING","PROCESSING","UPDATING","INTERRUPTED"].includes(S);
+  $("controls").innerHTML = controlsHTML();
+  const inp = $("controls").querySelector("input"); if(inp && S==="INTERRUPTED") inp.focus();
+  const c = $("conn");
+  const map = {OFFLINE:["off","Not connected"],CONNECTING:["busy","Connecting"],ERROR:["err","Disconnected"]};
+  const m = map[S] || ["on","Connected"]; c.dataset.c = m[0]; $("connText").textContent = m[1];
+  $("live").textContent = v.t();
+}
+
+/* ---------- 5-second interruption window ---------- */
+function startCountdown(ms){
+  const end = performance.now() + ms, fg = $("fg"), num = $("num");
+  const tick = now => {
+    const left = Math.max(0, end - now);
+    fg.setAttribute("stroke-dashoffset", (C * (1 - left/ms)).toFixed(2));
+    num.textContent = Math.ceil(left/1000);
+    if(left <= 0){ raf = 0; onWindowElapsed(); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+}
+function onWindowElapsed(){ go("SPEAKING"); send({type:"commit"}); }
+function interrupt(){
+  if(S!=="BOOKING") return;
+  speechSynthesis && speechSynthesis.cancel();
+  go("INTERRUPTED");           // exit(BOOKING) cancels the rAF loop
+  send({type:"interrupt"});
+}
+
+/* ---------- Voice ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function speak(text){
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.02; speechSynthesis.speak(u);
+}
+function listen(){
+  ctx.heard = "";
+  if(!SR){ ctx.error="Speech recognition isn’t supported in this browser. Type your request instead."; go("IDLE"); return; }
+  recog = new SR(); recog.lang = "en-US"; recog.interimResults = true;
+  let final = "";
+  recog.onresult = e => { let t=""; for(const r of e.results){ t += r[0].transcript; if(r.isFinal) final = t; }
+    ctx.heard = t; const h = $("heard"); if(h) h.textContent = t; };
+  recog.onend = () => { if(S==="LISTENING"){ (final||ctx.heard) ? submitUtterance(final||ctx.heard) : go("IDLE"); } };
+  recog.onerror = e => { if(S==="LISTENING" && e.error!=="aborted") go("IDLE"); };
+  try{ recog.start(); }catch(e){ go("IDLE"); }
+}
+function submitUtterance(text){ go("PROCESSING",{heard:text}); send({type:"utterance",text}); }
+
+/* ---------- Transport ---------- */
+function send(msg){ if(ws && ws.readyState===1) ws.send(JSON.stringify(msg)); else if(!WS_URL) mock(msg); }
+function onServer(m){
+  if(m.type==="action_started" && S==="PROCESSING"){
+    ctx.a = m; ctx.orig = m.subject||"";
+    speak(m.title+(m.subject?": "+m.subject:"")+". Say interrupt if you want to change anything.");
+    go("BOOKING",{destination:m.subject||"", windowMs:m.window_ms||WINDOW_MS});
+  }
+  else if(m.type==="agent_say"){ if(S==="UPDATING") go("SPEAKING",{destination:m.subject||ctx.destination}); speak(m.text); }
+  else if(m.type==="confirmed" && S==="SPEAKING") go("CONFIRMED",{destination:m.subject||ctx.destination, done:m.done||"Done", ref:"MR-"+Math.random().toString(36).slice(2,8).toUpperCase()});
+  else if(m.type==="clarify" && S==="PROCESSING"){ speak(m.text); go("IDLE"); }
+  else if(m.type==="error") go("ERROR",{error:m.message});
+}
+
+/* Local mock backend, same protocol as a real server. Swap for your LLM + tool calling. */
+const later = (fn,ms) => timers.push(setTimeout(fn,ms));
+const cap = t => t.replace(/\b\w/g,c=>c.toUpperCase());
+const grab = (t,re) => { const m = t.match(re); return m ? m[1].trim().replace(/[.!?]+$/,"") : ""; };
+const INTENTS = [
+ {k:"message",re:/e-?mail|message|text\b/i,title:"Sending your message",slot:"Recipient",get:t=>cap(grab(t,/\bto\s+([a-z]+)/i)),done:v=>"Message sent to "+v},
+ {k:"flight",re:/flight|\bfly\b/i,title:"Booking your flight",slot:"Destination",get:t=>cap(grab(t,/\b(?:to|for)\s+([a-z .'-]+?)(?=\s+(?:please|tomorrow|on|next|from)\b|[.!?,]|$)/i)),done:v=>"Flight booked to "+v},
+ {k:"ride",re:/\bcab\b|taxi|\bride\b|uber/i,title:"Booking your ride",slot:"Destination",get:t=>cap(grab(t,/\bto\s+(?:the\s+)?([a-z .'-]+)/i)),done:v=>"Ride booked to "+v},
+ {k:"meeting",re:/meeting|schedule|calendar/i,title:"Scheduling your meeting",slot:"Details",get:t=>grab(t,/(?:meeting|schedule)(?:\s+a)?(?:\s+meeting)?\s+(.+)/i),done:v=>"Meeting scheduled "+v},
+ {k:"reminder",re:/remind/i,title:"Setting your reminder",slot:"Reminder",get:t=>grab(t,/remind(?:\s+me)?\s+(.+)/i),done:v=>"Reminder set: "+v},
+ {k:"food",re:/\border\b|pizza|burger|dinner|lunch/i,title:"Placing your order",slot:"Item",get:t=>grab(t,/order(?:\s+(?:me|a|an|some))*\s+(.+)/i),done:v=>"Order placed: "+v}
+];
+const GENERIC = {k:"task",title:"Working on it",slot:"Request",get:t=>t.trim().slice(0,80),done:v=>"Done: "+v};
+let cur = GENERIC, curVal = "";
+const strip = t => t.replace(/^\s*(no|nope|wait|actually)\b[,.!\s]*/i,"").replace(/^(change (?:it|that|this) to|make it|instead,?|switch to|use)\s*/i,"").trim();
+function mock(m){
+  if(m.type==="utterance"){
+    cur = INTENTS.find(i=>i.re.test(m.text)) || GENERIC; curVal = cur.get(m.text);
+    if(!curVal) return later(()=>onServer({type:"clarify",text:"What should the "+cur.slot.toLowerCase()+" be?"}),700);
+    later(()=>onServer({type:"action_started",kind:cur.k,title:cur.title,slot:cur.slot,subject:curVal,window_ms:WINDOW_MS}),900);
+  }
+  if(m.type==="commit") later(()=>onServer({type:"confirmed",subject:curVal,done:cur.done(curVal)}),2200);
+  if(m.type==="interrupt"){ timers.forEach(clearTimeout); timers=[]; }
+  if(m.type==="update"){
+    const plain = strip(m.text), v = ["flight","ride","message"].includes(cur.k) ? (cur.get(m.text)||cap(plain)) : plain;
+    curVal = v;
+    later(()=>onServer({type:"agent_say",text:"Got it. Changing the "+cur.slot.toLowerCase()+" to "+v+". Finishing now.",subject:v}),1000);
+    later(()=>onServer({type:"confirmed",subject:v,done:cur.done(v)}),4200);
+  }
+}
+
+async function start(){
+  go("CONNECTING");
+  try{
+    const st = await navigator.mediaDevices.getUserMedia({audio:true}); st.getTracks().forEach(t=>t.stop());
+  }catch(e){ return go("ERROR",{error:"Microphone access was blocked. Allow it in your browser’s site settings, then reconnect."}); }
+  if("speechSynthesis" in window){ const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } // unlock audio playback
+  if(!WS_URL){ later(()=>go("IDLE"),500); return; }
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => go("IDLE");
+  ws.onmessage = e => { try{ onServer(JSON.parse(e.data)); }catch(_){} };
+  ws.onerror = () => go("ERROR",{error:"Couldn’t reach the booking server."});
+  ws.onclose = () => { if(S!=="OFFLINE" && S!=="ERROR") go("ERROR",{error:"The connection to the server closed."}); };
+}
+function reset(){ speechSynthesis && speechSynthesis.cancel(); timers.forEach(clearTimeout); timers=[]; ctx.heard=""; ctx.destination=""; }
+
+/* ---------- Events ---------- */
+orb.addEventListener("click", () => {
+  if(S==="IDLE") go("LISTENING");
+  else if(S==="LISTENING") { try{recog.stop()}catch(e){} }
+  else if(S==="BOOKING") interrupt();
+  else if(S==="SPEAKING") speechSynthesis && speechSynthesis.cancel();
+  else if(S==="CONFIRMED") { reset(); go("IDLE"); }
+  else if(S==="ERROR") start_retry();
+});
+function start_retry(){ go("CONNECTING"); start(); }
+$("controls").addEventListener("click", e => {
+  const a = e.target.closest("[data-a]"); if(!a) return;
+  ({ start, interrupt, stop:()=>{try{recog.stop()}catch(_){}} , mute:()=>speechSynthesis.cancel(),
+     again:()=>{reset(); go("IDLE");}, retry:()=>{ ws && ws.close(); ws=null; go("CONNECTING"); start(); } })[a.dataset.a]();
+});
+$("controls").addEventListener("submit", e => {
+  e.preventDefault(); const f = e.target.dataset.f, t = new FormData(e.target).get("t").trim(); if(!t) return;
+  if(f==="utter") submitUtterance(t);
+  if(f==="update"){ go("UPDATING",{heard:t}); send({type:"update",text:t}); }
+});
+document.addEventListener("keydown", e => {
+  if(S==="BOOKING" && (e.key===" " || e.key==="Escape")){ e.preventDefault(); interrupt(); }
+});
+/* ---------- History, views, examples ---------- */
+let HIST = []; try{ HIST = JSON.parse(localStorage.getItem("mer_hist")||"[]"); }catch(e){}
+function saveHistory(){
+  HIST.unshift({done:ctx.done,title:ctx.a.title,slot:ctx.a.slot,from:(ctx.orig&&ctx.orig!==ctx.destination)?ctx.orig:"",ref:ctx.ref,t:Date.now()});
+  HIST = HIST.slice(0,30); try{ localStorage.setItem("mer_hist",JSON.stringify(HIST)); }catch(e){}
+}
+function renderHistory(){
+  $("histList").innerHTML = HIST.length ? HIST.map(h=>`<li><div><strong>${esc(h.done)}</strong><span>${esc(h.title)}</span><span>${new Date(h.t).toLocaleString([],{dateStyle:"medium",timeStyle:"short"})}</span>${h.from?`<span class="chg">You interrupted and changed the ${esc(String(h.slot).toLowerCase())} from ${esc(h.from)}</span>`:""}</div><small>${esc(h.ref)}</small></li>`).join("")
+    : '<li class="empty">Nothing yet. Ask the agent for something and it will appear here.</li>';
+}
+function route(){
+  const v = location.hash.replace("#/","");
+  const view = ["agent","history"].includes(v) ? v : "home";
+  document.body.dataset.v = view;
+  document.querySelectorAll(".nav a").forEach(a=>a.toggleAttribute("aria-current", a.getAttribute("href")==="#/"+view));
+  if(view==="history") renderHistory();
+  scrollTo(0,0);
+}
+function runPending(){ if(pending && S==="IDLE"){ const p = pending; pending = null; setTimeout(()=>{ if(S==="IDLE") submitUtterance(p); },350); } }
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-p]");
+  if(c){ pending = c.dataset.p; location.hash = "#/agent"; if(S==="CONFIRMED"){ reset(); go("IDLE"); } else runPending(); }
+  if(e.target.closest("[data-clear]")){ HIST=[]; try{localStorage.removeItem("mer_hist")}catch(_){} renderHistory(); }
+});
+addEventListener("hashchange", route);
+render();
+route();
+</script>
+</body>
+</html>

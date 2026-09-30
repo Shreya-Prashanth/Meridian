@@ -1,0 +1,67 @@
+{
+  "tools": [
+    {
+      "name": "search_flights",
+      "description": "Search flights between two cities.",
+      "read_only": true,
+      "cancellable": true,
+      "idempotency_required": false,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "origin": {"type": "string"},
+          "destination": {"type": "string"},
+          "date": {"type": "string"},
+          "passengers": {"type": "integer"}
+        },
+        "required": ["destination"]
+      }
+    },
+    {
+      "name": "book_flight",
+      "description": "Book a selected flight.",
+      "read_only": false,
+      "cancellable": true,
+      "idempotency_required": true,
+      "state_effects": ["booking_created"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flight_id": {"type": "string"},
+          "passengers": {"type": "integer"}
+        },
+        "required": ["flight_id"]
+      }
+    },
+    {
+      "name": "create_ticket",
+      "description": "Create a support ticket.",
+      "read_only": false,
+      "cancellable": true,
+      "idempotency_required": true,
+      "state_effects": ["ticket_created"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "subject": {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "required": ["subject"]
+      }
+    },
+    {
+      "name": "lookup_manual",
+      "description": "Look up a manual using an image or video frame.",
+      "read_only": true,
+      "cancellable": true,
+      "idempotency_required": false,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "frame": {"type": "object"}
+        },
+        "required": ["frame"]
+      }
+    }
+  ]
+}
